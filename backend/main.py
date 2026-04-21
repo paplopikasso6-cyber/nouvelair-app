@@ -11,17 +11,17 @@ CORS(app)
 USERS = {"admin": "password123"}
 
 # ─────────────────────────────────────────────
-# HARDCODED COSTS (set by operator)
+# HARDCODED COSTS
 # ─────────────────────────────────────────────
-PARKING_COST_PER_HOUR     = 50
-REPOSITIONING_MIN         = 500
-REPOSITIONING_MAX         = 1500
-HANDLING_MIN              = 2500
-HANDLING_MAX              = 3500
-CATERING_PER_FLIGHT       = 3190
-CATERING_REFILL           = 3190   # if AOG > 7h
-COMPENSATION_SHORT        = 250    # delay < 3h
-COMPENSATION_LONG         = 600    # delay > 3h
+PARKING_COST_PER_HOUR = 50
+REPOSITIONING_MIN     = 500
+REPOSITIONING_MAX     = 1500
+HANDLING_MIN          = 2500
+HANDLING_MAX          = 3500
+CATERING_PER_FLIGHT   = 3190
+CATERING_REFILL       = 3190
+COMPENSATION_SHORT    = 250
+COMPENSATION_LONG     = 600
 
 SLOT_START = 8
 M_FLIGHTS  = 8
@@ -73,7 +73,6 @@ def optimize():
                     "duration": float(row[3])
                 })
     else:
-        # fallback to default flights
         flights_data = [
             {"flight_no": f"NV10{j}", "from": "TUN", "to": "DST", "duration": duration[j]}
             for j in range(1, M_FLIGHTS + 1)
@@ -82,7 +81,6 @@ def optimize():
     random.seed(42)
     planes  = list(range(1, N + 1))
     flights = list(range(1, len(flights_data) + 1))
-
     dur     = {j: flights_data[j-1]["duration"] for j in flights}
     d_slot  = {j: random.randint(1, 8) for j in flights}
 
@@ -123,15 +121,11 @@ def optimize():
         return C_f + C_d + C_n + C_m + C_r + C_h + C_p + C_cat
 
     C = {(i,j): compute_cost(i,j) for i in planes for j in flights}
-
     prob = pulp.LpProblem("Nouvelair_Planning", pulp.LpMinimize)
     x = pulp.LpVariable.dicts("x", [(i,j) for i in planes for j in flights], cat="Binary")
-
     prob += pulp.lpSum(C[(i,j)] * x[(i,j)] for i in planes for j in flights)
-
     for j in flights:
         prob += pulp.lpSum(x[(i,j)] for i in planes) == 1
-
     for i in planes:
         for j1 in flights:
             for j2 in flights:
@@ -200,28 +194,13 @@ def optimize():
 # ─────────────────────────────────────────────
 @app.route("/api/aog", methods=["POST"])
 def aog():
-    data        = request.json
-    N           = int(data.get("planes", 3))
-    aog_plane   = int(data.get("aog_plane", 1))
-    aog_airport = data.get("aog_airport", "TUN")
-    repair_cost = float(data.get("repair_cost", 1000))
-    repair_time = float(data.get("repair_time", 4))
+    data = request.json
+    aog_events = data.get("aog_events", [])
 
+    N = 14
     random.seed(42)
     planes  = list(range(1, N + 1))
     flights = list(range(1, M_FLIGHTS + 1))
-
-    # Parking cost based on repair time
-    parking_total = PARKING_COST_PER_HOUR * repair_time
-
-    # Catering: refill if AOG > 7h
-    catering_total = CATERING_PER_FLIGHT
-    if repair_time > 7:
-        catering_total += CATERING_REFILL
-
-    # Passenger compensation
-    compensation = COMPENSATION_LONG if repair_time > 3 else COMPENSATION_SHORT
-    compensation_total = compensation * M_FLIGHTS
 
     FuelBurn    = {i: round(random.uniform(3.5, 5.0), 2) for i in planes}
     RepairCost  = {i: round(random.uniform(500, 1500), 2) for i in planes}
@@ -250,6 +229,8 @@ def aog():
         return C_f + C_d + C_n + C_m + C_r + C_h + C_p + extra
 
     def run_optimizer(available_planes, delay=0, extra=0):
+        if not available_planes:
+            return None
         C = {(i,j): compute_cost(i,j,delay,extra) for i in available_planes for j in flights}
         prob = pulp.LpProblem("AOG", pulp.LpMinimize)
         x = pulp.LpVariable.dicts("x", [(i,j) for i in available_planes for j in flights], cat="Binary")
@@ -285,81 +266,102 @@ def aog():
                 })
         return {"total_cost": round(total, 2), "schedule": schedule}
 
-    # Option 1 — Wait for maintenance
-    delay_slots = int(repair_time)
-    opt1 = run_optimizer(planes, delay=delay_slots)
-    extra1 = repair_cost + parking_total + catering_total + compensation_total
-    option1 = {
-        "title": "🔧 Wait for Maintenance",
-        "description": f"Plane fixed after {repair_time}h at {aog_airport}. All flights delayed.",
-        "extra_cost": round(extra1, 2),
-        "total_cost": round(opt1["total_cost"] + extra1, 2) if opt1 else None,
-        "schedule": opt1["schedule"] if opt1 else [],
-        "feasible": opt1 is not None,
-        "breakdown": {
-            "repair": repair_cost,
-            "parking": parking_total,
-            "catering": catering_total,
-            "compensation": compensation_total
-        }
-    }
+    all_results = []
 
-    # Option 2 — Use fleet plane
-    remaining = [i for i in planes if i != aog_plane]
-    opt2 = run_optimizer(remaining) if remaining else None
-    extra2 = round(random.uniform(REPOSITIONING_MIN, REPOSITIONING_MAX), 2)
-    option2 = {
-        "title": "✈️ Use Fleet Plane",
-        "description": f"Plane {aog_plane} grounded. Flights reassigned to {len(remaining)} remaining planes.",
-        "extra_cost": extra2,
-        "total_cost": round(opt2["total_cost"] + extra2, 2) if opt2 else None,
-        "schedule": opt2["schedule"] if opt2 else [],
-        "feasible": opt2 is not None,
-        "breakdown": {
-            "repositioning": extra2
-        }
-    }
+    for event in aog_events:
+        aog_plane   = int(event.get("aog_plane", 1))
+        aog_airport = event.get("aog_airport", "TUN")
+        repair_cost = float(event.get("repair_cost", 1000))
+        repair_time = float(event.get("repair_time", 4))
+        aog_time    = event.get("aog_time", "00:00")
 
-    # Option 3 — Rent a plane
-    rental_id = max(planes) + 1
-    planes_with_rental = remaining + [rental_id]
-    FuelBurn[rental_id]  = round(random.uniform(4.0, 5.5), 2)
-    RepairCost[rental_id] = 0
-    FerryFuel[rental_id]  = 0
-    beta_r[rental_id]     = 0
-    Delay.update({(rental_id,j): round(random.uniform(0,45),2) for j in flights})
-    Handling[rental_id]   = round(random.uniform(HANDLING_MIN, HANDLING_MAX), 2)
-    Repos[rental_id]      = round(random.uniform(REPOSITIONING_MIN, REPOSITIONING_MAX), 2)
-    rental_fee = round(random.uniform(8000, 15000), 2)
-    opt3 = run_optimizer(planes_with_rental)
-    extra3 = rental_fee + parking_total + catering_total + compensation_total
-    option3 = {
-        "title": "💸 Rent a Plane",
-        "description": f"External aircraft rented. AOG plane {aog_plane} stays grounded.",
-        "extra_cost": round(extra3, 2),
-        "total_cost": round(opt3["total_cost"] + extra3, 2) if opt3 else None,
-        "schedule": opt3["schedule"] if opt3 else [],
-        "feasible": opt3 is not None,
-        "breakdown": {
-            "rental": rental_fee,
-            "parking": parking_total,
-            "catering": catering_total,
-            "compensation": compensation_total
-        }
-    }
+        try:
+            aog_hour = int(aog_time.split(":")[0])
+        except:
+            aog_hour = 0
+        aog_slot = max(1, aog_hour - SLOT_START + 1)
+        affected_flights = [j for j in flights if dept_slot[j] >= aog_slot]
 
-    options = [option1, option2, option3]
-    feasible = [o for o in options if o["feasible"]]
-    if feasible:
-        best = min(feasible, key=lambda o: o["total_cost"])
-        best["recommended"] = True
+        parking_total      = PARKING_COST_PER_HOUR * repair_time
+        catering_total     = CATERING_PER_FLIGHT + (CATERING_REFILL if repair_time > 7 else 0)
+        compensation       = COMPENSATION_LONG if repair_time > 3 else COMPENSATION_SHORT
+        compensation_total = compensation * len(affected_flights)
+        remaining          = [i for i in planes if i != aog_plane]
+
+        # Option 1 — Wait for maintenance
+        delay_slots = int(repair_time)
+        opt1   = run_optimizer(planes, delay=delay_slots)
+        extra1 = repair_cost + parking_total + catering_total + compensation_total
+        option1 = {
+            "title": "🔧 Wait for Maintenance",
+            "description": f"Plane {aog_plane} fixed after {repair_time}h at {aog_airport}. {len(affected_flights)} flights affected.",
+            "extra_cost": round(extra1, 2),
+            "total_cost": round(opt1["total_cost"] + extra1, 2) if opt1 else None,
+            "schedule": opt1["schedule"] if opt1 else [],
+            "feasible": opt1 is not None,
+            "breakdown": {"repair": repair_cost, "parking": parking_total, "catering": catering_total, "compensation": compensation_total}
+        }
+
+        # Option 2 — Use fleet plane
+        opt2   = run_optimizer(remaining)
+        extra2 = round(random.uniform(REPOSITIONING_MIN, REPOSITIONING_MAX), 2)
+        option2 = {
+            "title": "✈️ Use Fleet Plane",
+            "description": f"Plane {aog_plane} grounded. {len(remaining)} planes cover {len(affected_flights)} affected flights.",
+            "extra_cost": extra2,
+            "total_cost": round(opt2["total_cost"] + extra2, 2) if opt2 else None,
+            "schedule": opt2["schedule"] if opt2 else [],
+            "feasible": opt2 is not None,
+            "breakdown": {"repositioning": extra2}
+        }
+
+        # Option 3 — Rent a plane
+        rental_id = max(planes) + 1
+        planes_with_rental = remaining + [rental_id]
+        FuelBurn[rental_id]   = round(random.uniform(4.0, 5.5), 2)
+        RepairCost[rental_id] = 0
+        FerryFuel[rental_id]  = 0
+        beta_r[rental_id]     = 0
+        Delay.update({(rental_id,j): round(random.uniform(0,45),2) for j in flights})
+        Handling[rental_id]   = round(random.uniform(HANDLING_MIN, HANDLING_MAX), 2)
+        Repos[rental_id]      = round(random.uniform(REPOSITIONING_MIN, REPOSITIONING_MAX), 2)
+        rental_fee = round(random.uniform(8000, 15000), 2)
+        opt3   = run_optimizer(planes_with_rental)
+        extra3 = rental_fee + parking_total + catering_total + compensation_total
+        option3 = {
+            "title": "💸 Rent a Plane",
+            "description": f"External aircraft rented. Plane {aog_plane} stays grounded at {aog_airport}.",
+            "extra_cost": round(extra3, 2),
+            "total_cost": round(opt3["total_cost"] + extra3, 2) if opt3 else None,
+            "schedule": opt3["schedule"] if opt3 else [],
+            "feasible": opt3 is not None,
+            "breakdown": {"rental": rental_fee, "parking": parking_total, "catering": catering_total, "compensation": compensation_total}
+        }
+
+        options  = [option1, option2, option3]
+        feasible = [o for o in options if o["feasible"]]
+        best_cost = None
+        if feasible:
+            best = min(feasible, key=lambda o: o["total_cost"])
+            best["recommended"] = True
+            best_cost = best["total_cost"]
+
+        all_results.append({
+            "aog_plane": aog_plane,
+            "aog_airport": aog_airport,
+            "aog_time": aog_time,
+            "affected_flights": len(affected_flights),
+            "options": options,
+            "best_cost": best_cost
+        })
+
+    combined_total = sum(r["best_cost"] for r in all_results if r["best_cost"] is not None)
 
     return jsonify({
-        "aog_plane": aog_plane,
-        "aog_airport": aog_airport,
-        "options": options
+        "aog_events": all_results,
+        "combined_total": round(combined_total, 2),
+        "total_aogs": len(aog_events)
     })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-    
