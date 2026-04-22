@@ -184,8 +184,8 @@ export default function AOG() {
           {result.total_aogs > 1 && (
             <div style={{ background:"#e8f5e9", padding:20, borderRadius:8, border:"2px solid #4caf50", marginTop:20 }}>
               <h3 style={{ color:"#2e7d32", margin:"0 0 10px" }}>📊 Combined Summary — {result.total_aogs} AOG Events</h3>
-              <p style={{ fontSize:13, color:"#555" }}>Total cost if best option chosen for each AOG:</p>
-              <p style={{ fontSize:24, fontWeight:"bold", color:"#2e7d32" }}>{result.combined_total?.toLocaleString()} €</p>
+              <p style={{ fontSize:20, fontWeight:"bold" }}>+{opt.extra_cost?.toLocaleString()} € extra costs</p>
+              <p style={{ fontSize:12, color:"#555" }}>Total: {opt.total_cost?.toLocaleString()} €</p>
             </div>
           )}
         </div>
