@@ -89,7 +89,7 @@ export default function AOG() {
                 style={{ width:"100%", padding:8, borderRadius:4, border:"1px solid #ccc" }} />
             </div>
             <div>
-              <label style={{ display:"block", marginBottom:5 }}>🔧 Repair / Gear Cost (€)</label>
+              <label style={{ display:"block", marginBottom:5 }}>🔧 Aircraft Spare Cost (€)</label>
               <input type="number" placeholder="e.g. 5000"
                 value={event.repair_cost} onChange={e => updateEvent(idx, "repair_cost", e.target.value)}
                 style={{ width:"100%", padding:8, borderRadius:4, border:"1px solid #ccc" }} />
