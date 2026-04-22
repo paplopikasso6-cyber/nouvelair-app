@@ -55,17 +55,15 @@ export default function AOG() {
         <h2 style={{ margin:0 }}>🚨 AOG Recovery</h2>
       </div>
 
-      {/* Number of AOGs input */}
       <div style={{ background:"#fff3e0", padding:20, borderRadius:8, marginBottom:20, border:"2px solid #ff9800" }}>
         <label style={{ display:"block", marginBottom:8, fontWeight:"bold", fontSize:16 }}>
-          How many AOG events? 
+          How many AOG events?
         </label>
         <input type="number" min="1" max="14" placeholder="e.g. 2"
           value={numAOGs} onChange={e => handleNumAOGs(e.target.value)}
           style={{ width:"100%", padding:10, borderRadius:4, border:"1px solid #ccc", fontSize:16 }} />
       </div>
 
-      {/* AOG forms */}
       {aogEvents.map((event, idx) => (
         <div key={idx} style={{ background:"#ffebee", padding:20, borderRadius:8, marginBottom:15, border:"2px solid #d32f2f" }}>
           <h3 style={{ color:"#d32f2f", margin:"0 0 15px" }}>⚠️ AOG Event #{idx + 1}</h3>
@@ -136,8 +134,8 @@ export default function AOG() {
                     <p style={{ fontSize:13, color:"#555" }}>{opt.description}</p>
                     {opt.feasible ? (
                       <>
-                        <p style={{ fontSize:20, fontWeight:"bold" }}>{opt.total_cost?.toLocaleString()} €</p>
-                        <p style={{ fontSize:12, color:"#d32f2f" }}>+{opt.extra_cost?.toLocaleString()} € extra</p>
+                        <p style={{ fontSize:20, fontWeight:"bold" }}>+{opt.extra_cost?.toLocaleString()} € extra costs</p>
+                        <p style={{ fontSize:12, color:"#555" }}>Total: {opt.total_cost?.toLocaleString()} €</p>
                         {opt.breakdown && (
                           <div style={{ fontSize:12, marginTop:8, background:"rgba(0,0,0,0.05)", padding:8, borderRadius:4 }}>
                             {Object.entries(opt.breakdown).map(([k,v]) => (
@@ -184,8 +182,8 @@ export default function AOG() {
           {result.total_aogs > 1 && (
             <div style={{ background:"#e8f5e9", padding:20, borderRadius:8, border:"2px solid #4caf50", marginTop:20 }}>
               <h3 style={{ color:"#2e7d32", margin:"0 0 10px" }}>📊 Combined Summary — {result.total_aogs} AOG Events</h3>
-              <p style={{ fontSize:20, fontWeight:"bold" }}>+{opt.extra_cost?.toLocaleString()} € extra costs</p>
-              <p style={{ fontSize:12, color:"#555" }}>Total: {opt.total_cost?.toLocaleString()} €</p>
+              <p style={{ fontSize:13, color:"#555" }}>Total extra costs if best option chosen for each AOG:</p>
+              <p style={{ fontSize:24, fontWeight:"bold", color:"#2e7d32" }}>+{result.combined_total?.toLocaleString()} € extra costs</p>
             </div>
           )}
         </div>
