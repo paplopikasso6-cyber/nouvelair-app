@@ -342,9 +342,9 @@ def aog():
         feasible = [o for o in options if o["feasible"]]
         best_cost = None
         if feasible:
-            best = min(feasible, key=lambda o: o["total_cost"])
+            best = min(feasible, key=lambda o: o["extra_cost"])
             best["recommended"] = True
-            best_cost = best["total_cost"]
+            best_cost = best["extra_cost"]
 
         all_results.append({
             "aog_plane": aog_plane,
