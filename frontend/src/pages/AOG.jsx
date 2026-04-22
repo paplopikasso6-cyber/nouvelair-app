@@ -45,20 +45,6 @@ export default function AOG() {
   const colors  = ["#fff3e0", "#e3f2fd", "#f3e5f5"];
   const borders = ["#ff9800", "#2196f3", "#9c27b0"];
 
-  // Build final merged schedule from all recommended options
-  const getFinalSchedule = () => {
-    if (!result) return [];
-    return result.aog_events.flatMap((ev, eidx) => {
-      const recommended = ev.options.find(o => o.recommended);
-      if (!recommended) return [];
-      return recommended.schedule.map(s => ({
-        ...s,
-        aog_event: eidx + 1,
-        option: recommended.title
-      }));
-    });
-  };
-
   return (
     <div style={{ maxWidth:1000, margin:"40px auto", fontFamily:"sans-serif", padding:"0 20px" }}>
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
@@ -193,7 +179,6 @@ export default function AOG() {
             </div>
           ))}
 
-          {/* Combined Summary */}
           {result.total_aogs > 1 && (
             <div style={{ background:"#e8f5e9", padding:20, borderRadius:8, border:"2px solid #4caf50", marginTop:20 }}>
               <h3 style={{ color:"#2e7d32", margin:"0 0 10px" }}>📊 Combined Summary — {result.total_aogs} AOG Events</h3>
@@ -202,38 +187,6 @@ export default function AOG() {
               <p style={{ fontSize:12, color:"#555" }}>Total (inc. operations): {result.aog_events.reduce((sum, ev) => sum + (ev.options.find(o => o.recommended)?.total_cost || 0), 0).toLocaleString()} €</p>
             </div>
           )}
-
-          {/* Final merged schedule */}
-          <div style={{ background:"#e3f2fd", padding:20, borderRadius:8, border:"2px solid #0055a5", marginTop:20 }}>
-            <h3 style={{ color:"#0055a5", margin:"0 0 15px" }}>🗓️ Final Schedule — All Recommended Options</h3>
-            <table style={{ width:"100%", borderCollapse:"collapse" }}>
-              <thead>
-                <tr style={{ background:"#0055a5", color:"white" }}>
-                  <th style={{ padding:8 }}>AOG #</th>
-                  <th style={{ padding:8 }}>Option</th>
-                  <th style={{ padding:8 }}>Plane</th>
-                  <th style={{ padding:8 }}>Flight</th>
-                  <th style={{ padding:8 }}>Departure</th>
-                  <th style={{ padding:8 }}>Return</th>
-                  <th style={{ padding:8 }}>Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getFinalSchedule().map((s, i) => (
-                  <tr key={i} style={{ background: i%2===0 ? "#fff" : "#f0f7ff", textAlign:"center" }}>
-                    <td style={{ padding:8 }}>AOG #{s.aog_event}</td>
-                    <td style={{ padding:8, fontSize:12 }}>{s.option}</td>
-                    <td style={{ padding:8 }}>✈️ {s.plane}</td>
-                    <td style={{ padding:8 }}>Vol {s.flight}</td>
-                    <td style={{ padding:8 }}>{s.departure}</td>
-                    <td style={{ padding:8 }}>{s.return}</td>
-                    <td style={{ padding:8 }}>{s.cost.toLocaleString()} €</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
         </div>
       )}
     </div>
