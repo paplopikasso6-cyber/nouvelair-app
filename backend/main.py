@@ -293,7 +293,7 @@ def aog():
         opt1   = run_optimizer(planes, delay=delay_slots)
         extra1 = repair_cost + parking_total + catering_total + compensation_total
         option1 = {
-            "title": "🔧 Wait for Maintenance",
+            "title": " Wait for Maintenance",
             "description": f"Plane {aog_plane} fixed after {repair_time}h at {aog_airport}. {len(affected_flights)} flights affected.",
             "extra_cost": round(extra1, 2),
             "total_cost": round(opt1["total_cost"] + extra1, 2) if opt1 else None,
@@ -304,9 +304,9 @@ def aog():
 
         # Option 2 — Use fleet plane
         opt2   = run_optimizer(remaining)
-        extra2 = round(random.uniform(REPOSITIONING_MIN, REPOSITIONING_MAX), 2)
+        extra2 = round(random.uniform(7000, 15000), 2)
         option2 = {
-            "title": "✈️ Use Fleet Plane",
+            "title": " Use Fleet Plane",
             "description": f"Plane {aog_plane} grounded. {len(remaining)} planes cover {len(affected_flights)} affected flights.",
             "extra_cost": extra2,
             "total_cost": round(opt2["total_cost"] + extra2, 2) if opt2 else None,
@@ -329,7 +329,7 @@ def aog():
         opt3   = run_optimizer(planes_with_rental)
         extra3 = rental_fee + parking_total + catering_total + compensation_total
         option3 = {
-            "title": "💸 Rent a Plane",
+            "title": " Rent a Plane",
             "description": f"External aircraft rented. Plane {aog_plane} stays grounded at {aog_airport}.",
             "extra_cost": round(extra3, 2),
             "total_cost": round(opt3["total_cost"] + extra3, 2) if opt3 else None,
